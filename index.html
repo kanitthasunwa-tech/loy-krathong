@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ลอยกระทงออนไลน์ - สืบสานประเพณีไทย</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QRious QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <!-- Google Fonts: Prompt & Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            font-family: 'Prompt', 'Kanit', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(217, 119, 6, 0.5);
+            border-radius: 4px;
+        }
+
+        /* Glassmorphism effects */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 215, 0, 0.18);
+        }
+        
+        .glass-btn {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            transition: all 0.25s ease;
+        }
+        .glass-btn:hover {
+            background: rgba(245, 158, 11, 0.25);
+            border-color: rgba(245, 158, 11, 0.8);
+            transform: translateY(-2px);
+        }
+
+        /* Glowing candle effect */
+        .glow-gold {
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.4), 0 0 40px rgba(217, 119, 6, 0.2);
+        }
+        
+        /* Smooth pulsing animation */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+        }
+        .animate-pulse-glow {
+            animation: pulseGlow 3s infinite ease-in-out;
+        }
+
+        /* Canvas container */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen overflow-hidden flex flex-col justify-between relative">
+
+    <!-- Background Canvas (Stars, Moon, Lanterns, Water, Fireworks, Krathongs) -->
+    <div id="canvas-container">
+        <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <!-- UI Overlay (Foreground) -->
+    <div class="relative z-10 flex flex-col justify-between min-h-screen p-4 pointer-events-none">
+        
+        <!-- Header Bar -->
+        <header class="flex justify-between items-center w-full max-w-5xl mx-auto pointer-events-auto">
+            <div class="flex items-center gap-3 glass-panel px-4 py-2.5 rounded-2xl border-amber-500/30">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-slate-950 font-bold text-xl shadow-lg">
+                    🪷
+                </div>
+                <div>
+                    <h1 class="font-bold text-base md:text-lg text-amber-200 tracking-wide leading-tight">ลอยกระทงออนไลน์</h1>
+                    <p class="text-xs text-amber-400/80">สืบสานมรดกไทย ขอขมาพระแม่คงคา</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Sound Toggle Button -->
+                <button id="soundBtn" onclick="toggleAudio()" class="glass-btn w-11 h-11 rounded-2xl flex items-center justify-center text-amber-300 shadow-md">
+                    <i class="fa-solid fa-volume-xmark text-lg" id="soundIcon"></i>
+                </button>
+                <!-- QR Code & Share Button -->
+                <button onclick="openQRModal()" class="glass-btn px-3.5 py-2.5 rounded-2xl flex items-center gap-2 text-amber-300 font-medium text-sm shadow-md">
+                    <i class="fa-solid fa-qrcode text-lg"></i>
+                    <span class="hidden sm:inline">สแกน / แชร์</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dynamic Floating Toast / Hint Notice -->
+        <div class="max-w-md mx-auto text-center pointer-events-auto my-auto transition-opacity duration-500 opacity-90">
+            <div id="hintBubble" class="glass-panel px-4 py-2 rounded-full text-xs md:text-sm text-amber-100/90 shadow-lg border border-amber-500/20 inline-flex items-center gap-2 animate-bounce">
+                <span>💡 คลิกหรือแตะที่กระทงในแม่น้ำ เพื่ออ่านคำอธิษฐาน</span>
+            </div>
+        </div>
+
+        <!-- Action Controls & Bottom Navigation Bar -->
+        <footer class="w-full max-w-lg mx-auto pb-2 pointer-events-auto">
+            <div class="glass-panel p-3 rounded-3xl border-amber-500/30 flex justify-around items-center gap-2 shadow-2xl">
+                
+                <!-- Release Lantern Button -->
+                <button onclick="spawnLantern()" class="flex flex-col items-center gap-1 p-2 rounded-2xl hover:bg-white/5 transition text-amber-200 text-xs font-medium">
+                    <span class="text-xl">🏮</span>
+                    <span>ปล่อยโคม</span>
+                </button>
+
+                <!-- MAIN CREATE KRATHONG BUTTON -->
+                <button onclick="openCreateModal()" class="flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 text-slate-950 font-bold text-base md:text-lg shadow-lg hover:brightness-110 active:scale-95 transition glow-gold">
+                    <span>🪷</span>
+                    <span>สร้างกระทง</span>
+                </button>
+
+                <!-- Firework Trigger Button -->
+                <button onclick="triggerFirework()" class="flex flex-col items-center gap-1 p-2 rounded-2xl hover:bg-white/5 transition text-amber-200 text-xs font-medium">
+                    <span class="text-xl">🎆</span>
+                    <span>จุดพลุ</span>
+                </button>
+
+            </div>
+        </footer>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- 1. CREATE KRATHONG MODAL -->
+    <div id="createModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-lg rounded-3xl p-5 md:p-6 text-slate-100 max-h-[90vh] overflow-y-auto border-amber-500/40 shadow-2xl">
+            
+            <div class="flex justify-between items-center mb-4 pb-2 border-b border-amber-500/20">
+                <h2 class="text-xl font-bold text-amber-300 flex items-center gap-2">
+                    <span>🪷</span> ออกแบบกระทงของคุณ
+                </h2>
+                <button onclick="closeModal('createModal')" class="text-slate-400 hover:text-white p-1 text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Step 1: Choose Krathong Type -->
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-amber-200 mb-2">1. เลือกรูปแบบกระทง</label>
+                <div class="grid grid-cols-2 gap-3" id="krathongTypeOptions">
+                    <!-- Options populated via JS -->
+                </div>
+            </div>
+
+            <!-- Step 2: Customize Colors -->
+            <div class="mb-5">
+                <label class="block text-sm font-medium text-amber-200 mb-2">2. เลือกสีสันดอกไม้</label>
+                <div class="flex gap-3 justify-center" id="colorOptions">
+                    <!-- Color picker dots via JS -->
+                </div>
+            </div>
+
+            <!-- Step 3: Name & Wish -->
+            <div class="mb-5 space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-amber-200 mb-1">3. ชื่อของคุณ / ผู้ร่วมอธิษฐาน</label>
+                    <input type="text" id="inputName" maxlength="30" placeholder="เช่น ศิรินทร์ และครอบครัว" 
+                        class="w-full bg-slate-900/80 border border-amber-500/30 rounded-xl px-4 py-2.5 text-amber-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 text-sm">
+                </div>
+                
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-sm font-medium text-amber-200">4. คำอธิษฐาน / ขอขมา</label>
+                        <button type="button" onclick="generateRandomWish()" class="text-xs text-amber-400 hover:text-amber-300 underline flex items-center gap-1">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> สุ่มคำอธิษฐาน
+                        </button>
+                    </div>
+                    <textarea id="inputWish" rows="3" maxlength="150" placeholder="เขียนคำอธิษฐานของคุณที่นี่..." 
+                        class="w-full bg-slate-900/80 border border-amber-500/30 rounded-xl p-3 text-amber-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 text-sm resize-none"></textarea>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button onclick="submitKrathong()" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-bold text-lg shadow-lg hover:brightness-110 active:scale-98 transition glow-gold flex items-center justify-center gap-2">
+                <span>🌊</span>
+                <span>ปล่อยกระทงลงแม่น้ำ</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. WISH DISPLAY MODAL -->
+    <div id="wishModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-md rounded-3xl p-6 text-slate-100 border-amber-500/40 shadow-2xl text-center relative overflow-hidden">
+            <div class="absolute -top-12 -right-12 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
+            
+            <div class="w-16 h-16 bg-gradient-to-tr from-amber-500 to-yellow-300 rounded-full flex items-center justify-center text-3xl mx-auto mb-3 shadow-lg">
+                🪷
+            </div>
+
+            <h3 id="wishModalName" class="text-xl font-bold text-amber-300 mb-1">ชื่อผู้ขอพร</h3>
+            <p class="text-xs text-amber-400/70 mb-4" id="wishModalTime">เมื่อสักครู่นี้</p>
+
+            <div class="bg-slate-900/60 p-4 rounded-2xl border border-amber-500/20 mb-5 max-h-48 overflow-y-auto">
+                <p id="wishModalText" class="text-sm md:text-base text-slate-200 leading-relaxed font-light italic">
+                    "ขอให้มีความสุข ก้าวหน้าในหน้าที่การงาน สุขภาพแข็งแรง"
+                </p>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="likeWish()" id="likeBtn" class="flex-1 py-2.5 rounded-xl glass-btn text-amber-300 font-medium text-sm flex items-center justify-center gap-2">
+                    <i class="fa-regular fa-heart text-red-400"></i>
+                    <span id="likeCountText">อนุโมทนา สาธุ</span>
+                </button>
+                <button onclick="closeModal('wishModal')" class="py-2.5 px-5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-sm">
+                    ปิด
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. QR CODE & SHARE MODAL -->
+    <div id="qrModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-sm rounded-3xl p-6 text-slate-100 border-amber-500/40 shadow-2xl text-center">
+            
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-bold text-amber-300 flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode"></i> สแกนเข้าใช้งาน
+                </h3>
+                <button onclick="closeModal('qrModal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <p class="text-xs text-slate-300 mb-4">สแกน QR Code นี้เพื่อเปิดเว็บบนมือถือ หรือแชร์ให้เพื่อนมาร่วมลอยกระทงด้วยกัน</p>
+
+            <!-- QR Code Canvas Container -->
+            <div class="bg-white p-4 rounded-2xl inline-block shadow-inner mb-4">
+                <canvas id="qrCanvas" class="w-48 h-48 mx-auto"></canvas>
+            </div>
+
+            <!-- Host URL Input for Custom URL editing -->
+            <div class="mb-4">
+                <label class="block text-xs text-left text-amber-200/80 mb-1">ลิงก์เว็บไซต์ปัจจุบัน:</label>
+                <input type="text" id="shareUrlInput" readonly class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-300 focus:outline-none select-all">
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="copyShareLink()" class="py-2.5 rounded-xl glass-btn text-amber-300 font-medium text-xs flex items-center justify-center gap-1.5">
+                    <i class="fa-regular fa-copy"></i> คัดลอกลิงก์
+                </button>
+                <button onclick="downloadQRCode()" class="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-download"></i> บันทึกรูป QR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 glass-panel border border-amber-400/40 text-amber-200 text-xs md:text-sm px-4 py-2 rounded-full shadow-2xl opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4">
+        <span id="toastMsg">ข้อความแจ้งเตือน</span>
+    </div>
+
+    <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+    <script>
+        /* ----------------------------------------------------
+           1. APP STATE & DATA DEFINITIONS
+        ---------------------------------------------------- */
+        const KRATHONG_TYPES = [
+            { id: 'banana', name: 'ใบตองคลาสสิก', icon: '🍃', color: '#22c55e', desc: 'ทำจากใบตองธรรมชาติตกแต่งงดงาม' },
+            { id: 'lotus', name: 'ดอกบัวสวรรค์', icon: '🪷', color: '#ec4899', desc: 'ดอกบัวสดซ้อนชั้นความหมายมงคล' },
+            { id: 'bread', name: 'ขนมปังรักษ์โลก', icon: '🍞', color: '#f59e0b', desc: 'เป็นอาหารปลา ย่อยสลายง่าย' },
+            { id: 'ice', name: 'กระทงน้ำแข็ง', icon: '🧊', color: '#06b6d4', desc: 'ละลายกลมกลืนกับสายน้ำ ไม่ทิ้งขยะ' }
+        ];
+
+        const FLOWER_COLORS = [
+            { id: 'yellow', hex: '#facc15', name: 'สีเหลือง' },
+            { id: 'pink', hex: '#f472b6', name: 'สีชมพู' },
+            { id: 'purple', hex: '#c084fc', name: 'สีม่วง' },
+            { id: 'white', hex: '#f8fafc', name: 'สีขาว' },
+            { id: 'red', hex: '#f87171', name: 'สีแดง' }
+        ];
+
+        const RANDOM_WISHES = [
+            "ขอขมาพระแม่คงคา ขอให้ชีวิตราบรื่นดั่งสายน้ำ ปราศจากทุกข์โศกโรคภัยด้วยเทอญ",
+            "ขอให้ปีนี้พบเจอแต่สิ่งดีๆ ครอบครัวมีความสุข ปลอดภัยจากภัยอันตรายทั้งปวง",
+            "ขอให้การงานก้าวหน้า มั่นคง การเรียนประสบความสำเร็จ ได้รับโอกาสดีๆ ในชีวิต",
+            "ขอให้ความรักสมหวัง มีความเข้าใจกัน ละทิ้งสิ่งไม่ดีไว้กับปีเก่า",
+            "ขอให้มีสุขภาพร่างกายแข็งแรง สุขภาพจิตแจ่มใส มีสติปัญญาในการดำเนินชีวิต"
+        ];
+
+        let selectedType = 'banana';
+        let selectedColor = '#facc15';
+        let krathongs = [];
+        let lanterns = [];
+        let fireworks = [];
+        let stars = [];
+        let currentActiveWish = null;
+
+        /* ----------------------------------------------------
+           2. CANVAS & ANIMATION ENGINE
+        ---------------------------------------------------- */
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        let width = 0;
+        let height = 0;
+        let riverY = 0;
+
+        function resizeCanvas() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            riverY = height * 0.45; // Water starts at 45% screen height
+            initStars();
+        }
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < 120; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * (height * 0.5),
+                    radius: Math.random() * 1.5 + 0.5,
+                    alpha: Math.random(),
+                    speed: Math.random() * 0.02 + 0.005
+                });
+            }
+        }
+
+        // Initialize background Lanterns
+        function initLanterns() {
+            lanterns = [];
+            for (let i = 0; i < 15; i++) {
+                lanterns.push({
+                    x: Math.random() * width,
+                    y: Math.random() * (riverY - 100),
+                    size: Math.random() * 12 + 8,
+                    speedY: Math.random() * 0.3 + 0.1,
+                    speedX: (Math.random() - 0.5) * 0.1,
+                    alpha: Math.random() * 0.7 + 0.3
+                });
+            }
+        }
+
+        // Pre-populate sample Krathongs in the river
+        function initSampleKrathongs() {
+            const sampleNames = ["น้องแป้ง", "คุณวิชัย", "ครอบครัวเจริญสุข", "พี่กอล์ฟ & น้องส้ม", "อนุโมทนาบุญ", "ฟ้าใส"];
+            for (let i = 0; i < 7; i++) {
+                const typeObj = KRATHONG_TYPES[Math.floor(Math.random() * KRATHONG_TYPES.length)];
+                const colorObj = FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)];
+                krathongs.push({
+                    id: Date.now() + i,
+                    x: Math.random() * (width - 100) + 50,
+                    y: riverY + Math.random() * (height - riverY - 80),
+                    type: typeObj.id,
+                    color: colorObj.hex,
+                    name: sampleNames[i % sampleNames.length],
+                    wish: RANDOM_WISHES[i % RANDOM_WISHES.length],
+                    likes: Math.floor(Math.random() * 15) + 1,
+                    scale: Math.random() * 0.3 + 0.85,
+                    speedX: Math.random() * 0.2 + 0.1,
+                    waveOffset: Math.random() * Math.PI * 2
+                });
+            }
+        }
+
+        /* ----------------------------------------------------
+           3. DRAWING FUNCTIONS (Canvas)
+        ---------------------------------------------------- */
+        let animationTime = 0;
+
+        function render() {
+            animationTime += 0.03;
+            ctx.clearRect(0, 0, width, height);
+
+            // A. Sky Gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, riverY);
+            skyGrad.addColorStop(0, '#030712');
+            skyGrad.addColorStop(0.6, '#0f172a');
+            skyGrad.addColorStop(1, '#1e1b4b');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, riverY);
+
+            // B. Moon & Glowing Halo
+            const moonX = width * 0.8;
+            const moonY = height * 0.15;
+            const moonRadius = Math.min(width, height) * 0.08;
+
+            // Halo
+            const haloGrad = ctx.createRadialGradient(moonX, moonY, moonRadius * 0.8, moonX, moonY, moonRadius * 2.5);
+            haloGrad.addColorStop(0, 'rgba(254, 243, 199, 0.4)');
+            haloGrad.addColorStop(0.5, 'rgba(253, 224, 71, 0.1)');
+            haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = haloGrad;
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonRadius * 2.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Moon Body
+            ctx.fillStyle = '#fef08a';
+            ctx.beginPath();
+            ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // C. Twinkling Stars
+            stars.forEach(s => {
+                s.alpha += Math.sin(animationTime * 2 + s.x) * s.speed;
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.abs(s.alpha)})`;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // D. Floating Sky Lanterns (โคมลอย)
+            lanterns.forEach((l, idx) => {
+                l.y -= l.speedY;
+                l.x += Math.sin(animationTime + idx) * 0.2;
+                if (l.y < -30) {
+                    l.y = riverY - 20;
+                    l.x = Math.random() * width;
+                }
+
+                // Lantern Glow
+                const lGlow = ctx.createRadialGradient(l.x, l.y, 2, l.x, l.y, l.size * 1.5);
+                lGlow.addColorStop(0, 'rgba(251, 146, 60, 0.9)');
+                lGlow.addColorStop(0.5, 'rgba(245, 158, 11, 0.4)');
+                lGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = lGlow;
+                ctx.beginPath();
+                ctx.arc(l.x, l.y, l.size * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Lantern Body
+                ctx.fillStyle = 'rgba(254, 243, 199, 0.95)';
+                ctx.beginPath();
+                ctx.roundRect(l.x - l.size * 0.4, l.y - l.size * 0.6, l.size * 0.8, l.size * 1.1, 4);
+                ctx.fill();
+            });
+
+            // E. Fireworks Loop
+            updateAndDrawFireworks();
+
+            // F. River Water Surface & Waves
+            const waterGrad = ctx.createLinearGradient(0, riverY, 0, height);
+            waterGrad.addColorStop(0, '#0f172a');
+            waterGrad.addColorStop(0.3, '#0284c7');
+            waterGrad.addColorStop(0.7, '#0369a1');
+            waterGrad.addColorStop(1, '#0c4a6e');
+            ctx.fillStyle = waterGrad;
+            ctx.fillRect(0, riverY, width, height - riverY);
+
+            // Water Ripples & Light Reflection
+            ctx.strokeStyle = 'rgba(253, 224, 71, 0.15)';
+            ctx.lineWidth = 1.5;
+            for (let i = 0; i < 6; i++) {
+                const waveY = riverY + (i * (height - riverY) / 6);
+                ctx.beginPath();
+                for (let x = 0; x < width; x += 20) {
+                    const yOffset = Math.sin(x * 0.01 + animationTime + i) * 3;
+                    if (x === 0) ctx.moveTo(x, waveY + yOffset);
+                    else ctx.lineTo(x, waveY + yOffset);
+                }
+                ctx.stroke();
+            }
+
+            // G. Draw Krathongs
+            krathongs.forEach((k) => {
+                // Drift right slowly
+                k.x += k.speedX;
+                if (k.x > width + 60) k.x = -60;
+
+                // Gentle wave bobbing
+                const offsetY = Math.sin(animationTime * 1.5 + k.waveOffset) * 4;
+
+                ctx.save();
+                ctx.translate(k.x, k.y + offsetY);
+                ctx.scale(k.scale, k.scale);
+
+                // Water reflection under krathong
+                const rGlow = ctx.createRadialGradient(0, 15, 5, 0, 15, 35);
+                rGlow.addColorStop(0, 'rgba(245, 158, 11, 0.5)');
+                rGlow.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = rGlow;
+                ctx.beginPath();
+                ctx.arc(0, 15, 35, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw Base/Petals according to Type
+                drawKrathongBase(k.type, k.color);
+
+                // Draw Candle Flame & Incense
+                drawCandleAndIncense();
+
+                ctx.restore();
+            });
+
+            requestAnimationFrame(render);
+        }
+
+        // Draw Krathong Vector Graphics
+        function drawKrathongBase(type, flowerColor) {
+            if (type === 'banana') {
+                // Outer Leaf Petals
+                ctx.fillStyle = '#15803d';
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i * Math.PI) / 4;
+                    ctx.save();
+                    ctx.rotate(angle);
+                    ctx.beginPath();
+                    ctx.ellipse(0, -26, 10, 20, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                // Inner Base
+                ctx.fillStyle = '#22c55e';
+                ctx.beginPath();
+                ctx.arc(0, 0, 24, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (type === 'lotus') {
+                // Lotus Petals
+                ctx.fillStyle = '#f472b6';
+                for (let i = 0; i < 10; i++) {
+                    const angle = (i * Math.PI) / 5;
+                    ctx.save();
+                    ctx.rotate(angle);
+                    ctx.beginPath();
+                    ctx.ellipse(0, -24, 12, 18, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+                ctx.fillStyle = '#fbcfe8';
+                ctx.beginPath();
+                ctx.arc(0, 0, 20, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (type === 'bread') {
+                // Cute Bread Shape
+                ctx.fillStyle = '#d97706';
+                ctx.beginPath();
+                ctx.roundRect(-28, -20, 56, 40, 12);
+                ctx.fill();
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.roundRect(-24, -16, 48, 32, 8);
+                ctx.fill();
+            } else if (type === 'ice') {
+                // Translucent Ice Base
+                ctx.fillStyle = 'rgba(165, 243, 252, 0.8)';
+                ctx.beginPath();
+                ctx.polygon ? ctx.polygon() : ctx.arc(0, 0, 26, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Central Flowers Decor
+            ctx.fillStyle = flowerColor;
+            for (let i = 0; i < 5; i++) {
+                const a = (i * Math.PI * 2) / 5;
+                const fx = Math.cos(a) * 10;
+                const fy = Math.sin(a) * 10;
+                ctx.beginPath();
+                ctx.arc(fx, fy, 6, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Candle Flame & Incense Smoke
+        function drawCandleAndIncense() {
+            // Incense sticks
+            ctx.strokeStyle = '#78350f';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(-4, 0); ctx.lineTo(-6, -28);
+            ctx.moveTo(4, 0); ctx.lineTo(6, -28);
+            ctx.stroke();
+
+            // Incense Smoke Tip Glow
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(-7, -29, 2, 2);
+            ctx.fillRect(5, -29, 2, 2);
+
+            // Candle Stick
+            ctx.fillStyle = '#fef08a';
+            ctx.fillRect(-3, -20, 6, 18);
+
+            // Flame Flicker Glow
+            const flicker = Math.sin(animationTime * 12) * 2;
+            const flameGlow = ctx.createRadialGradient(0, -24, 1, 0, -24, 14 + flicker);
+            flameGlow.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            flameGlow.addColorStop(0.3, 'rgba(251, 191, 36, 0.9)');
+            flameGlow.addColorStop(0.8, 'rgba(239, 68, 68, 0.4)');
+            flameGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = flameGlow;
+            ctx.beginPath();
+            ctx.arc(0, -24, 14 + flicker, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        /* ----------------------------------------------------
+           4. FIREWORKS SYSTEM
+        ---------------------------------------------------- */
+        function triggerFirework() {
+            const startX = Math.random() * (width * 0.8) + (width * 0.1);
+            const targetY = Math.random() * (riverY * 0.6) + 40;
+            const colors = ['#f43f5e', '#3b82f6', '#eab308', '#a855f7', '#10b981', '#f97316'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+
+            for (let i = 0; i < 45; i++) {
+                const angle = (i * Math.PI * 2) / 45;
+                const speed = Math.random() * 4 + 2;
+                fireworks.push({
+                    x: startX,
+                    y: targetY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    alpha: 1,
+                    color: color,
+                    decay: Math.random() * 0.02 + 0.015
+                });
+            }
+            playSynthSound(587.33, 'triangle', 0.4); // Sound effect for firework
+            showToast('🎆 จุดพลุฉลองเทศกาลลอยกระทง!');
+        }
+
+        function updateAndDrawFireworks() {
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                const p = fireworks[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.05; // gravity
+                p.alpha -= p.decay;
+
+                if (p.alpha <= 0) {
+                    fireworks.splice(i, 1);
+                    continue;
+                }
+
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function spawnLantern() {
+            lanterns.push({
+                x: width * 0.5 + (Math.random() * 100 - 50),
+                y: riverY - 10,
+                size: Math.random() * 10 + 10,
+                speedY: Math.random() * 0.4 + 0.3,
+                speedX: (Math.random() - 0.5) * 0.2,
+                alpha: 1
+            });
+            showToast('🏮 ปล่อยโคมลอยขึ้นสู่ท้องฟ้า');
+        }
+
+        /* ----------------------------------------------------
+           5. WEB AUDIO API (Background Ambient & Chimes)
+        ---------------------------------------------------- */
+        let audioCtx = null;
+        let isMuted = true;
+        let ambientTimer = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function toggleAudio() {
+            initAudio();
+            const icon = document.getElementById('soundIcon');
+            if (isMuted) {
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                isMuted = false;
+                icon.className = 'fa-solid fa-volume-high text-amber-400';
+                startAmbientMusic();
+                showToast('🔊 เปิดเสียงบรรยากาศยามค่ำคืน');
+            } else {
+                isMuted = true;
+                icon.className = 'fa-solid fa-volume-xmark text-amber-300';
+                if (ambientTimer) clearInterval(ambientTimer);
+                showToast('🔇 ปิดเสียง');
+            }
+        }
+
+        // Thai Pentatonic Scale Frequencies (Ranad / Gamelan vibe)
+        const PENTATONIC_FREQS = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33];
+
+        function playSynthSound(freq, type = 'sine', duration = 1.5) {
+            if (isMuted || !audioCtx) return;
+
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) { console.log(e); }
+        }
+
+        function startAmbientMusic() {
+            if (ambientTimer) clearInterval(ambientTimer);
+            ambientTimer = setInterval(() => {
+                if (!isMuted) {
+                    const randomNote = PENTATONIC_FREQS[Math.floor(Math.random() * PENTATONIC_FREQS.length)];
+                    playSynthSound(randomNote, 'sine', 2.0);
+                }
+            }, 1800);
+        }
+
+        /* ----------------------------------------------------
+           6. INTERACTION & CLICK DETECTION ON KRATHONGS
+        ---------------------------------------------------- */
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+
+            // Check if clicked near any Krathong
+            for (let i = krathongs.length - 1; i >= 0; i--) {
+                const k = krathongs[i];
+                const dist = Math.hypot(clickX - k.x, clickY - k.y);
+                if (dist < 40 * k.scale) {
+                    openWishModal(k);
+                    playSynthSound(440, 'sine', 0.5);
+                    return;
+                }
+            }
+        });
+
+        /* ----------------------------------------------------
+           7. UI MODALS & FORM LOGIC
+        ---------------------------------------------------- */
+        function renderTypeOptions() {
+            const container = document.getElementById('krathongTypeOptions');
+            container.innerHTML = KRATHONG_TYPES.map(t => `
+                <div onclick="selectType('${t.id}')" 
+                     class="p-3 rounded-2xl border transition cursor-pointer flex flex-col items-center text-center ${selectedType === t.id ? 'bg-amber-500/20 border-amber-400 glow-gold' : 'bg-slate-900/60 border-slate-700 hover:border-slate-500'}">
+                    <span class="text-3xl mb-1">${t.icon}</span>
+                    <span class="font-bold text-xs text-amber-200">${t.name}</span>
+                    <span class="text-[10px] text-slate-400 mt-1 leading-tight">${t.desc}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderColorOptions() {
+            const container = document.getElementById('colorOptions');
+            container.innerHTML = FLOWER_COLORS.map(c => `
+                <button onclick="selectColor('${c.hex}')" 
+                        style="background-color: ${c.hex};" 
+                        class="w-9 h-9 rounded-full border-2 transition transform hover:scale-110 ${selectedColor === c.hex ? 'border-white scale-110 ring-2 ring-amber-400' : 'border-transparent opacity-80'}">
+                </button>
+            `).join('');
+        }
+
+        function selectType(id) {
+            selectedType = id;
+            renderTypeOptions();
+        }
+
+        function selectColor(hex) {
+            selectedColor = hex;
+            renderColorOptions();
+        }
+
+        function generateRandomWish() {
+            const rand = RANDOM_WISHES[Math.floor(Math.random() * RANDOM_WISHES.length)];
+            document.getElementById('inputWish').value = rand;
+            playSynthSound(523.25, 'sine', 0.3);
+        }
+
+        function openCreateModal() {
+            renderTypeOptions();
+            renderColorOptions();
+            document.getElementById('createModal').classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function submitKrathong() {
+            const nameInput = document.getElementById('inputName').value.trim() || 'ผู้ไม่ประสงค์ออกนาม';
+            const wishInput = document.getElementById('inputWish').value.trim() || 'ขอให้มีความสุข สมหวังดังปรารถนา ทุกประการ';
+
+            // Add new user krathong near bottom center of river
+            const newKrathong = {
+                id: Date.now(),
+                x: width * 0.5 + (Math.random() * 60 - 30),
+                y: riverY + (height - riverY) * 0.5,
+                type: selectedType,
+                color: selectedColor,
+                name: nameInput,
+                wish: wishInput,
+                likes: 0,
+                scale: 1.1, // slightly larger for user's own
+                speedX: Math.random() * 0.15 + 0.1,
+                waveOffset: 0
+            };
+
+            krathongs.push(newKrathong);
+            closeModal('createModal');
+            showToast('✨ ปล่อยกระทงของคุณลงสู่สายน้ำเรียบร้อยแล้ว!');
+            playSynthSound(659.25, 'sine', 1.2);
+
+            // Spawn celebratory fireworks
+            setTimeout(triggerFirework, 400);
+        }
+
+        function openWishModal(krathong) {
+            currentActiveWish = krathong;
+            document.getElementById('wishModalName').innerText = krathong.name;
+            document.getElementById('wishModalText').innerText = `"${krathong.wish}"`;
+            document.getElementById('likeCountText').innerText = `อนุโมทนา (${krathong.likes})`;
+            document.getElementById('wishModal').classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function likeWish() {
+            if (currentActiveWish) {
+                currentActiveWish.likes++;
+                document.getElementById('likeCountText').innerText = `อนุโมทนา (${currentActiveWish.likes})`;
+                showToast('🙏 ร่วมอนุโมทนาบุญเรียบร้อย');
+                playSynthSound(587.33, 'sine', 0.4);
+            }
+        }
+
+        /* ----------------------------------------------------
+           8. QR CODE GENERATOR & SHARING
+        ---------------------------------------------------- */
+        let qr = null;
+
+        function openQRModal() {
+            const currentUrl = window.location.href;
+            document.getElementById('shareUrlInput').value = currentUrl;
+
+            // Generate QR Code onto canvas
+            if (!qr) {
+                qr = new QRious({
+                    element: document.getElementById('qrCanvas'),
+                    size: 200,
+                    value: currentUrl,
+                    foreground: '#0f172a',
+                    background: '#ffffff'
+                });
+            } else {
+                qr.value = currentUrl;
+            }
+
+            document.getElementById('qrModal').classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function copyShareLink() {
+            const copyText = document.getElementById('shareUrlInput');
+            copyText.select();
+            document.execCommand('copy');
+            showToast('📋 คัดลอกลิงก์ไปยังคลิปบอร์ดแล้ว');
+        }
+
+        function downloadQRCode() {
+            const canvasElem = document.getElementById('qrCanvas');
+            const link = document.createElement('a');
+            link.download = 'loy-krathong-qr.png';
+            link.href = canvasElem.toDataURL();
+            link.click();
+            showToast('💾 ดาวน์โหลดรูป QR Code เรียบร้อย');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = message;
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+            toast.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0');
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+            }, 3000);
+        }
+
+        /* ----------------------------------------------------
+           9. INITIALIZATION
+        ---------------------------------------------------- */
+        window.onload = () => {
+            resizeCanvas();
+            initLanterns();
+            initSampleKrathongs();
+            render();
+            window.addEventListener('resize', resizeCanvas);
+        };
+    </script>
+</body>
+</html>
